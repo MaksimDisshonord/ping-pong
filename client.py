@@ -40,6 +40,27 @@ def receive():
 # --- ШРИФТИ ---
 font_win = font.Font(None, 72)
 font_main = font.Font(None, 36)
+def load_image_safe(path, size=None):
+    try:
+        img = image.load(path)
+        if size:
+            img = transform.scale(img, size)
+        return img.convert_alpha()  # convert_alpha() для прозорості та швидкості
+    except:
+        print(f" Не вдалося завантажити {path}")
+        return None
+
+#Фон  екрану перемоги
+win_bg = load_image_safe('images/backgrounds/win_bg.jpg', (800, 600))
+# М'яч - тепер це зображення замість білого кола
+ball_img = load_image_safe('images/game_elements/ball.png', (20, 20))
+
+# Ракетка гравця 1 (ліва)
+paddle1_img = load_image_safe('images/game_elements/paddle1.png', (20, 100))
+
+# Ракетка гравця 2 (права)
+paddle2_img = load_image_safe('images/game_elements/paddle2.png', (20, 100))
+
 # --- ЗОБРАЖЕННЯ ----
 bg_img = image.load('images/backgrounds/game_bg.jpg')
 bg_img = transform.scale(bg_img, (800, 600))
