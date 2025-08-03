@@ -20,6 +20,51 @@ font_main = font.Font(None, 36)
 font_small = font.Font(None, 24)
 
 
+# === ЗАВАНТАЖЕННЯ ЗВУКІВ ===
+def load_sound_safe(path, volume=0.5):
+    """
+    Безпечно завантажує звук з обробкою помилок
+    path - шлях до файлу
+    volume - гучність від 0.0 до 1.0
+    Повертає звук або None при помилці
+    """
+    try:
+        sound = mixer.Sound(path)
+        sound.set_volume(volume)
+        return sound
+    except Exception as e:
+        print(f"⚠️ Не вдалося завантажити звук {path}: {e}")
+        return None
+
+def load_music_safe(path, volume=0.3):
+    """
+    Безпечно завантажує фонову музику
+    path - шлях до файлу
+    volume - гучність від 0.0 до 1.0
+    """
+    try:
+        mixer.music.load(path)
+        mixer.music.set_volume(volume)
+        return True
+    except Exception as e:
+        print(f"⚠️ Не вдалося завантажити фонову музику {path}: {e}")
+        return False
+
+print("🔊 Завантажую звуки...")
+
+# Завантаження звукових ефектів
+paddle_hit_sound = load_sound_safe('audio/paddle_hit.wav', 0.6)  # Звук удару по ракетці
+wall_hit_sound = load_sound_safe('audio/wall_hit.wav', 0.4)      # Звук удару об стіну
+menu_click_sound = load_sound_safe('audio/menu_click.wav', 0.5)   # Звук кліку в меню
+win_sound = load_sound_safe('audio/peremoga.wav', 0.7)                # Звук перемоги
+lose_sound = load_sound_safe('audio/lose.wav', 0.7)              # Звук поразки
+
+background_music_loaded = load_music_safe('audio/background_music.ogg', 0.3)
+
+# Змінна для відстеження стану фонової музики
+music_playing = False
+
+
 # === ЗАВАНТАЖЕННЯ ЗОБРАЖЕНЬ ===
 def load_image_safe(path, size=None):
     """
@@ -56,11 +101,39 @@ if game_bg is None:
         game_bg = None
 
 # Ігрові елементи
-ball_img = load_image_safe('images/game_elements/ball.jpg', (20, 20))
-paddle1_img = load_image_safe('images/game_elements/paddle1.jpg', (20, 100))
-paddle2_img = load_image_safe('images/game_elements/paddle2.jpg', (20, 100))
+ball_img = load_image_safe('images/game_elements/ball.png', (20, 20))
+paddle1_img = load_image_safe('images/game_elements/paddle1.png', (20, 100))
+paddle2_img = load_image_safe('images/game_elements/paddle2.png', (20, 100))
 
 print("✅ Завантаження зображень завершено!")
+
+# === ФУНКЦІЇ ДЛЯ РОБОТИ З МУЗИКОЮ ===
+def start_background_music():
+    """Запускає фонову музику"""
+    global music_playing
+    if background_music_loaded and game_settings["sound_enabled"] and not music_playing:
+        try:
+            mixer.music.play(-1)  # -1 означає нескінченне повторення
+            music_playing = True
+            print("🎵 Фонова музика запущена")
+        except Exception as e:
+            print(f"⚠️ Помилка запуску фонової музики: {e}")
+
+def stop_background_music():
+    """Зупиняє фонову музику"""
+    global music_playing
+    if music_playing:
+        mixer.music.stop()
+        music_playing = False
+        print("🎵 Фонова музика зупинена")
+
+def play_sound_effect(sound):
+    """Програє звуковий ефект якщо звук увімкнено"""
+    if sound and game_settings["sound_enabled"]:
+        try:
+            sound.play()
+        except Exception as e:
+            print(f"⚠️ Помилка відтворення звуку: {e}")
 
 
 # === КЛАСИ ДЛЯ МЕНЮ ===
@@ -94,6 +167,7 @@ class Button:
             self.hovered = self.rect.collidepoint(event.pos)
         elif event.type == MOUSEBUTTONDOWN:
             if self.rect.collidepoint(event.pos) and self.action:
+                play_sound_effect(menu_click_sound)
                 self.action()
                 return True
         return False
@@ -120,6 +194,7 @@ game_settings = {
 def start_game():
     global current_state
     current_state = CONNECTING
+    start_background_music()
     print("🎮 Підключення до гри...")
 
 
@@ -131,6 +206,7 @@ def open_settings():
 
 def exit_game():
     print("👋 До побачення!")
+    stop_background_music()
     quit()
     sys.exit()
 
@@ -138,7 +214,18 @@ def exit_game():
 def back_to_menu():
     global current_state
     current_state = MENU
+    stop_background_music()
     print("🏠 Повертаюся до меню...")
+
+def toggle_sound():
+    """Перемикає звук"""
+    game_settings["sound_enabled"] = not game_settings["sound_enabled"]
+    if game_settings["sound_enabled"]:
+        start_background_music()
+        print("🔊 Звук увімкнено")
+    else:
+        stop_background_music()
+        print("🔇 Звук вимкнено")
 
 
 # === СТВОРЕННЯ КНОПОК МЕНЮ ===
@@ -150,7 +237,8 @@ menu_buttons = [
 
 settings_buttons = [
     Button(50, 500, 150, 40, "Назад", back_to_menu),
-    Button(WIDTH - 200, 500, 150, 40, "Застосувати", back_to_menu)
+    Button(WIDTH - 200, 500, 150, 40, "Застосувати", back_to_menu),
+    Button(350, 300, 150, 40, "Звуки вкл/викл", toggle_sound)
 ]
 
 
@@ -304,11 +392,13 @@ game_state = {}
 buffer = ""
 client = None
 connection_attempts = 0
+last_sound_event = None
 
 while True:
     # Обробка подій
     for e in event.get():
         if e.type == QUIT:
+            stop_background_music()
             exit()
 
         # Обробка подій для різних станів
@@ -373,8 +463,10 @@ while True:
             if you_winner is None:
                 if game_state["winner"] == my_id:
                     you_winner = True
+                    play_sound_effect(win_sound)
                 else:
                     you_winner = False
+                    play_sound_effect(lose_sound)
 
             if you_winner:
                 text = "Ти переміг!"
@@ -393,6 +485,7 @@ while True:
             # Обробка кліку по кнопці меню
             for e in event.get():
                 if e.type == QUIT:
+                    stop_background_music()
                     exit()
                 menu_button.handle_event(e)
 
@@ -426,11 +519,10 @@ while True:
             # Звукові події
             if game_state['sound_event'] and game_settings["sound_enabled"]:
                 if game_state['sound_event'] == 'wall_hit':
-                    # звук відбиття м'ячика від стін
+                    play_sound_effect(wall_hit_sound)
                     pass
                 if game_state['sound_event'] == 'platform_hit':
-                    # звук відбиття м'ячика від платформи
-                    pass
+                    play_sound_effect(paddle_hit_sound)
 
         else:
             # Екран очікування

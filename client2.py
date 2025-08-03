@@ -56,9 +56,9 @@ if game_bg is None:
         game_bg = None
 
 # Ігрові елементи
-ball_img = load_image_safe('images/game_elements/ball.jpg', (20, 20))
-paddle1_img = load_image_safe('images/game_elements/paddle1.jpg', (20, 100))
-paddle2_img = load_image_safe('images/game_elements/paddle2.jpg', (20, 100))
+ball_img = load_image_safe('images/game_elements/ball.png', (20, 20))
+paddle1_img = load_image_safe('images/game_elements/paddle1.png', (20, 100))
+paddle2_img = load_image_safe('images/game_elements/paddle2.png', (20, 100))
 
 print("✅ Завантаження зображень завершено!")
 
